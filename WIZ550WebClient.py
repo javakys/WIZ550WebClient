@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import sys
 import socket
 import time
 
@@ -28,7 +29,7 @@ class WIZ550WebClient:
 			self.conn.request("GET", "/io.cgi")
 			r2 = self.conn.getresponse()
 		except Exception as e:
-			print(e)
+			sys.stdout.write('%r\r\n' % e)
 			return False
 		finally:
 			self.conn.close()
@@ -91,7 +92,7 @@ class WIZ550WebClient:
 				r2.status = 0
 				r2.reason = ''
 			except Exception as e:
-				print e
+				sys.stdout.write('%r\r\n' % e)
 		
 			finally:	
 				self.conn.close()
