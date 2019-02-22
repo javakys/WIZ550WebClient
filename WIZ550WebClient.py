@@ -4,7 +4,11 @@ import sys
 import socket
 import time
 
-import httplib, urllib
+if sys.version_info > (3, 0):
+	import http.client
+	import urllib.request, urllib.parse
+else:
+	import httplib, urllib
 
 	
 class WIZ550WebClient:
@@ -25,41 +29,46 @@ class WIZ550WebClient:
 		import json
 	
 		try:	
-			self.conn = httplib.HTTPConnection(self.host)
+			if sys.version_info > (3, 0):
+				self.conn = http.client.HTTPConnection(self.host, timeout=1)
+				
+			else:
+				self.conn = httplib.HTTPConnection(self.host)
+
+			self.conn.connect()
 			self.conn.request("GET", "/io.cgi")
 			r2 = self.conn.getresponse()
+			data = r2.read()
+			index = data.find("(", 0, len(data))
+			index2 = data.find(")", index, len(data))
+			j = json.loads(data[index+1:index2])
+
+			for i in range(16):
+				self.inputs[i] = j['din'][i]['v']
+
 		except Exception as e:
-			sys.stdout.write('%r\r\n' % e)
+			# sys.stdout.write('%r\r\n' % e)
 			return False
 		finally:
-			self.conn.close()
-
-		data = r2.read()
-		index = data.find("(", 0, len(data))
-		index2 = data.find(")", index, len(data))
-		j = json.loads(data[index+1:index2])
-
-		for i in range(16):
-			self.inputs[i] = j['din'][i]['v']
-		
+			self.conn.close()		
 
 	def getGINstate(self, portnum):
 		import json
 		
-		self.conn = httplib.HTTPConnection(self.host)
+		if sys.version_info > (3, 0):
+			self.conn = http.client.HTTPConnection(self.host, timeout=1)
+		else:
+			self.conn = httplib.HTTPConnection(self.host)
+		self.conn.connect()
 		self.conn.request("GET", "/io.cgi")
+
 		r2 = self.conn.getresponse()
-#		print r2.status, r2.reason
 		data = r2.read()
 		index = data.find("(", 0, len(data))
 		index2 = data.find(")", index, len(data))
 		j = json.loads(data[index+1:index2])
 		
-#		for i in range(0,16):
-#			print j['din'][i]['v']
-		
 		retval = j['din'][portnum]['v']
-#		print retval
 		
 		return retval
 		
@@ -74,12 +83,19 @@ class WIZ550WebClient:
 		while True:
 			try:		
 #				params = urllib.urlencode({'val': 0, 'pin': 8})
-				params = urllib.urlencode(self.paramsdic)
+				if(sys.version_info > (3, 0)):
+					params = urllib.parse.urlencode(self.paramsdic)
+				else:
+					params = urllib.urlencode(self.paramsdic)
 				headers = {"Content-type": "application/x-www-form-urlencoded", 
 			  		 		"Accept": "text/plain"}	
 
 #				print('Send httpconnection')
-				self.conn = httplib.HTTPConnection(self.host)
+				if(sys.version_info > (3, 0)):
+					self.conn = http.client.HTTPConnection(self.host, timeout=1)
+				else:
+					self.conn = httplib.HTTPConnection(self.host)
+				self.conn.connect()
 				self.conn.request("POST", "/dout.cgi", params, headers)	
 #				time.sleep(0.1)
 				r2 = self.conn.getresponse()
@@ -91,8 +107,10 @@ class WIZ550WebClient:
 					
 				r2.status = 0
 				r2.reason = ''
+				return True
 			except Exception as e:
-				sys.stdout.write('%r\r\n' % e)
+				# sys.stdout.write('%r\r\n' % e)
+				return False
 		
 			finally:	
 				self.conn.close()
